@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Checking static web application files'
+                script {
+                    if (isUnix()) {
+                        sh 'test -f index.html && test -f style.css && test -f script.js'
+                    } else {
+                        bat 'if not exist index.html exit /b 1'
+                        bat 'if not exist style.css exit /b 1'
+                        bat 'if not exist script.js exit /b 1'
+                    }
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Basic file-presence test passed. Add HTML Tidy if it is installed on the agent.'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh 'mkdir -p web-deploy && cp index.html style.css script.js web-deploy/'
+                    } else {
+                        bat 'if not exist web-deploy mkdir web-deploy'
+                        bat 'copy /Y index.html web-deploy\\index.html'
+                        bat 'copy /Y style.css web-deploy\\style.css'
+                        bat 'copy /Y script.js web-deploy\\script.js'
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success { echo 'Web files copied to the web-deploy folder in the Jenkins workspace.' }
+        failure { echo 'Web CI/CD pipeline failed. Check Console Output.' }
+    }
+}

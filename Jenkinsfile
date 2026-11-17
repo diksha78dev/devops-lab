@@ -2,40 +2,49 @@ pipeline {
     agent any
 
     stages {
-
         stage('Checkout') {
             steps {
-                echo 'Source code checked out from GitHub'
+                checkout scm
             }
         }
-
+        stage('Build and Test') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh 'mvn clean test package'
+                    } else {
+                        bat 'mvn clean test package'
+                    }
+                }
+            }
+        }
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t exp8-cicd:latest .'
+                script {
+                    if (isUnix()) {
+                        sh 'docker build -t devops-lab:1.0 .'
+                    } else {
+                        bat 'docker build -t devops-lab:1.0 .'
+                    }
+                }
             }
         }
-
-        stage('Test Docker Image') {
+        stage('Deploy Container') {
             steps {
-                sh 'docker images exp8-cicd:latest'
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh 'docker stop exp8-app || true'
-                sh 'docker rm exp8-app || true'
-                sh 'docker run -d --name exp8-app -p 8081:80 exp8-cicd:latest'
+                script {
+                    if (isUnix()) {
+                        sh 'docker rm -f devops-lab-app || true'
+                        sh 'docker run -d --name devops-lab-app -p 8080:8080 devops-lab:1.0'
+                    } else {
+                        bat 'docker rm -f devops-lab-app'
+                        bat 'docker run -d --name devops-lab-app -p 8080:8080 devops-lab:1.0'
+                    }
+                }
             }
         }
     }
-
     post {
-        success {
-            echo 'CI/CD Pipeline completed successfully!'
-        }
-        failure {
-            echo 'CI/CD Pipeline failed.'
-        }
+        success { echo 'CI/CD pipeline completed successfully.' }
+        failure { echo 'Pipeline failed. Check Console Output.' }
     }
 }
